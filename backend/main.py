@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Query
 from sqlmodel import select
-from backend.models import Taxon, TaxonName
-from backend.database import get_session
+from models import Taxon, TaxonName
+from database import get_session
+import uvicorn
 
 app = FastAPI()
 
@@ -42,16 +43,20 @@ def search_taxa(
     elif mode == "ends with":
         stmt = stmt.where(TaxonName.name.endswith(keyword))
 
-    total = session.exec(stmt).count()
-    stmt = stmt.offset((page - 1) * items_per_page).limit(items_per_page)
+    all_results = session.exec(stmt).all()
+    total = len(all_results)
 
-    results = session.exec(stmt).all()
+    # pagination
+    paginated_results = all_results[(page - 1) * items_per_page : page * items_per_page]
 
     return {
         "total": total,
         "page": page,
         "results": [
             {"taxon_id": r.taxon_id, "name": r.name, "class": r.name_class}
-            for r in results
+            for r in paginated_results
         ],
     }
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

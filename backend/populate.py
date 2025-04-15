@@ -1,19 +1,48 @@
 from models import Taxon, TaxonName
 from database import create_db_and_tables, get_session
+import os
+
+DATA_DIR = "data"
+
+def parse_nodes(file_path):
+    taxa = []
+    with open(file_path, "r") as f:
+        for line in f:
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) >= 3:
+                tax_id = int(parts[0])
+                parent_id = int(parts[1])
+                rank = parts[2]
+                taxa.append(Taxon(id=tax_id, parent_id=parent_id, rank=rank))
+    return taxa
+
+def parse_names(file_path):
+    names = []
+    with open(file_path, "r") as f:
+        for line in f:
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) >= 4:
+                tax_id = int(parts[0])
+                name = parts[1]
+                name_class = parts[3]
+                names.append(TaxonName(taxon_id=tax_id, name=name, name_class=name_class))
+    return names
 
 def load_data():
     create_db_and_tables()
     session = get_session()
 
-    # Replace this with actual parsing from nodes.dmp and names.dmp
-    tax1 = Taxon(id=1, parent_id=None, rank="root")
-    tax2 = Taxon(id=2, parent_id=1, rank="species")
-    name1 = TaxonName(taxon_id=1, name="Life", name_class="scientific name")
-    name2 = TaxonName(taxon_id=2, name="Homo sapiens", name_class="scientific name")
+    nodes_path = os.path.join(DATA_DIR, "nodes.dmp")
+    names_path = os.path.join(DATA_DIR, "names.dmp")
 
-    session.add_all([tax1, tax2, name1, name2])
+    taxa = parse_nodes(nodes_path)
+    taxon_names = parse_names(names_path)
+
+    session.add_all(taxa)
+    session.add_all(taxon_names)
     session.commit()
     session.close()
+    print("Database populated successfully!")
 
 if __name__ == "__main__":
     load_data()
